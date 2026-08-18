@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test del Amigo Falso</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Test del Amigo Falso</h1>
+            <p class="subtitle">¿Realmente me conoces? Demuéstralo</p>
+        </header>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <p class="progress-text" id="progressText">Pregunta 1 de 10</p>
+
+        <form id="quizForm">
+            <div id="questionsContainer">
+                <!-- Las preguntas se generarán dinámicamente -->
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" id="prevBtn" class="btn-nav" disabled>Anterior</button>
+                <button type="button" id="nextBtn" class="btn-nav">Siguiente</button>
+                <button type="submit" id="submitBtn" class="btn-submit" style="display: none;">Enviar Respuestas</button>
+            </div>
+        </form>
+
+        <div id="message" class="message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
