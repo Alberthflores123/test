@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
-app.use(express.static(__dirname)); // Sirve archivos estáticos
+app.use(express.static(__dirname));
 
 // Configuración del transporter
 const transporter = nodemailer.createTransport({
@@ -21,17 +21,15 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Ruta principal - REDIRIGE A LOGIN
+// Ruta principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// Ruta para login.html
 app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'login.html'));
 });
 
-// Ruta para index.html
 app.get('/index.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -39,10 +37,24 @@ app.get('/index.html', (req, res) => {
 // Ruta para enviar correos
 app.post('/send-email', async (req, res) => {
     try {
-        const answers = req.body;
+        const data = req.body;
+        const answers = data;
+        const score = data.score || { correct: 0, total: 10, percentage: 0 };
         
         // Construir el cuerpo del correo
-        let emailBody = '<h1>📋 Resultados del Test del Amigo Falso</h1><br>';
+        let emailBody = `
+            <h1>📋 Resultados del Test del Amigo Falso</h1>
+            <div style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+                <h2 style="font-size: 3em; margin: 0; color: ${score.percentage >= 70 ? '#28a745' : '#dc3545'}">${score.percentage}%</h2>
+                <p style="font-size: 1.2em;">Acertaste ${score.correct} de ${score.total} preguntas</p>
+                <p style="font-weight: bold; color: ${score.percentage >= 70 ? '#28a745' : '#dc3545'}">
+                    ${score.percentage >= 70 ? '🎉 ¡Eres un gran amigo!' : '😅 ¡Necesitas conocerme mejor!'}
+                </p>
+            </div>
+            <hr>
+            <h3>📝 Respuestas detalladas:</h3>
+            <br>
+        `;
         
         const questions = [
             "¿Cómo es mi nombre y apellido completo?",
@@ -53,19 +65,32 @@ app.post('/send-email', async (req, res) => {
             "¿Cuál es mi personaje de anime favorito?",
             "¿Cuál es mi género de anime favorito?",
             "¿Cuál es mi juego favorito?",
-            "Del 1 al 10, ¿qué tan buen amigo soy?"
+            "Del 1 al 10, ¿qué tan buen amigo soy?",
+            "¿Qué tipo de mujeres me gustan?"
         ];
         
         // Agregar respuestas de texto
         questions.forEach((q, index) => {
             const answer = answers[index + 1] || 'No respondida';
-            emailBody += `<p><strong>${q}</strong><br>${answer}</p><hr>`;
+            const isCorrect = checkAnswer(index + 1, answer);
+            emailBody += `
+                <p>
+                    <strong>${q}</strong><br>
+                    ${answer}
+                    ${isCorrect ? ' ✅' : ' ❌'}
+                </p>
+                <hr>
+            `;
         });
         
-        // Agregar imagen si existe
-        if (answers[10]) {
-            emailBody += `<p><strong>Imagen de depósito:</strong><br>`;
-            emailBody += `<img src="${answers[10]}" style="max-width: 500px; border: 1px solid #ddd; border-radius: 8px;"></p>`;
+        // Agregar información de la imagen si existe
+        if (answers[11]) {
+            emailBody += `
+                <p><strong>📎 Imagen de depósito:</strong><br>
+                <img src="${answers[11]}" style="max-width: 500px; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px;"></p>
+            `;
+        } else {
+            emailBody += `<p><strong>📎 Imagen de depósito:</strong> No se subió imagen</p>`;
         }
         
         const mailOptions = {
@@ -83,6 +108,34 @@ app.post('/send-email', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+// Función para verificar respuestas
+function checkAnswer(id, answer) {
+    const correctAnswers = {
+        1: ["alberth marcelo silvestre flores", "alberthmarcelosilvestreflores", "marcelo silvestre", "alberth flores"],
+        2: ["26/12", "26-12", "26 de diciembre", "diciembre 26"],
+        3: "18",
+        4: ["negro", "black"],
+        5: ["gotoubun no hanayome", "las quintillizas", "the quintessential quintuplets", "quintillizas"],
+        6: ["miku nakano", "miku"],
+        7: ["yuri", "gl"], // ¡NUEVO!
+        8: ["genshin impact", "genshin"],
+        9: function(value) { return parseInt(value) >= 5; },
+        10: ["milf", "culonas", "tetonas", "pequeñas", "tiernas", "culona", "tetona", "pequeña", "tierna"]
+    };
+    
+    const userAnswer = String(answer).toLowerCase().trim();
+    
+    if (id === 9) {
+        return correctAnswers[9](userAnswer);
+    }
+    
+    if (Array.isArray(correctAnswers[id])) {
+        return correctAnswers[id].some(a => userAnswer.includes(a.toLowerCase()));
+    }
+    
+    return userAnswer === String(correctAnswers[id]);
+}
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
