@@ -2,22 +2,41 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
+app.use(express.static(__dirname)); // Sirve archivos estáticos
 
-// Configuración del transporter de nodemailer
+// Configuración del transporter
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: 'tuemail@gmail.com', // Reemplaza con tu email
-        pass: 'tucontraseña' // Reemplaza con tu contraseña
+        user: process.env.EMAIL_USER || 'silvestrefloresalberthmarcelo@gmail.com',
+        pass: process.env.EMAIL_PASS || 'jowsomhsroxxfqom'
     }
 });
 
+// Ruta principal - REDIRIGE A LOGIN
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Ruta para login.html
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Ruta para index.html
+app.get('/index.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Ruta para enviar correos
 app.post('/send-email', async (req, res) => {
     try {
         const answers = req.body;
@@ -50,8 +69,8 @@ app.post('/send-email', async (req, res) => {
         }
         
         const mailOptions = {
-            from: 'tuemail@gmail.com', // Reemplaza con tu email
-            to: 'tudestino@gmail.com', // Reemplaza con el email destino
+            from: process.env.EMAIL_USER || 'silvestrefloresalberthmarcelo@gmail.com',
+            to: 'silvestrefloresalberthmarcelo@gmail.com',
             subject: '🎯 Test del Amigo Falso - Nuevas Respuestas',
             html: emailBody
         };
