@@ -1,7 +1,7 @@
 const questions = [
     { id: 1, question: "¿Cómo es mi nombre y apellido completo?", type: "text" },
     { id: 2, question: "¿Cuándo cumplo años?", type: "text" },
-    { id: 3, question: "¿Cuántos años tengo?", type: "text" }, // ✅ CAMBIADO A TEXT
+    { id: 3, question: "¿Cuántos años tengo?", type: "text" },
     { id: 4, question: "¿Cuál es mi color favorito?", type: "text" },
     { id: 5, question: "¿Cuál es mi anime favorito?", type: "text" },
     { id: 6, question: "¿Cuál es mi personaje de anime favorito?", type: "text" },
@@ -79,7 +79,6 @@ function renderQuestions() {
 function saveAnswer(id, value) {
     answers[id] = value;
     userAnswers[id] = value;
-    updateProgress();
 }
 
 // Manejar archivos
@@ -93,7 +92,6 @@ function handleFileUpload(event, id) {
         reader.onload = function(e) {
             answers[id] = e.target.result;
             userAnswers[id] = 'Imagen subida';
-            updateProgress();
         };
         reader.readAsDataURL(file);
     }
@@ -115,109 +113,160 @@ function showQuestion(index) {
     document.getElementById('progressText').textContent = `Pregunta ${index + 1} de ${questions.length}`;
 }
 
-function updateProgress() {
-    // No actualizamos la barra de progreso aquí para mantener la posición de la pregunta actual
-}
-
 // Calcular puntaje
 function calculateScore() {
     let correct = 0;
-    let total = 10; // Las primeras 10 preguntas cuentan (la 11 es opcional)
+    let total = 10;
     
-    // Pregunta 1: Nombre
     const q1 = userAnswers[1]?.toLowerCase().trim() || '';
     if (correctAnswers[1].some(a => q1.includes(a.toLowerCase()))) correct++;
     
-    // Pregunta 2: Fecha
     const q2 = userAnswers[2]?.toLowerCase().trim() || '';
     if (correctAnswers[2].some(a => q2.includes(a.toLowerCase()))) correct++;
     
-    // Pregunta 3: Edad
     if (userAnswers[3] == correctAnswers[3]) correct++;
     
-    // Pregunta 4: Color favorito
     const q4 = userAnswers[4]?.toLowerCase().trim() || '';
     if (correctAnswers[4].some(a => q4.includes(a.toLowerCase()))) correct++;
     
-    // Pregunta 5: Anime favorito
     const q5 = userAnswers[5]?.toLowerCase().trim() || '';
     if (correctAnswers[5].some(a => q5.includes(a.toLowerCase()))) correct++;
     
-    // Pregunta 6: Personaje favorito
     const q6 = userAnswers[6]?.toLowerCase().trim() || '';
     if (correctAnswers[6].some(a => q6.includes(a.toLowerCase()))) correct++;
     
-    // Pregunta 7: Género de anime favorito (YURI o GL)
     const q7 = userAnswers[7]?.toLowerCase().trim() || '';
     if (correctAnswers[7].some(a => q7.includes(a.toLowerCase()))) correct++;
     
-    // Pregunta 8: Juego favorito
     const q8 = userAnswers[8]?.toLowerCase().trim() || '';
     if (correctAnswers[8].some(a => q8.includes(a.toLowerCase()))) correct++;
     
-    // Pregunta 9: Calificación (>= 5)
     if (correctAnswers[9](userAnswers[9])) correct++;
     
-    // Pregunta 10: Tipo de mujeres
     const q10 = userAnswers[10]?.toLowerCase().trim() || '';
     if (correctAnswers[10].some(a => q10.includes(a.toLowerCase()))) correct++;
     
     return { correct, total, percentage: Math.round((correct / total) * 100) };
 }
 
-// Enviar datos al servidor
+function checkAnswer(id, answer) {
+    const userAnswer = String(answer).toLowerCase().trim();
+    
+    if (id === 9) {
+        return correctAnswers[9](userAnswer);
+    }
+    
+    if (Array.isArray(correctAnswers[id])) {
+        return correctAnswers[id].some(a => userAnswer.includes(a.toLowerCase()));
+    }
+    
+    return userAnswer === String(correctAnswers[id]);
+}
+
+// Enviar datos con EmailJS
 function sendData() {
     const submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Enviando...';
     
-    // Calcular puntaje
     const score = calculateScore();
     
-    // Añadir puntaje a las respuestas
-    const dataToSend = {
-        ...answers,
-        score: score
+    // Construir el mensaje en HTML
+    const preguntas = [
+        "¿Cómo es mi nombre y apellido completo?",
+        "¿Cuándo cumplo años?",
+        "¿Cuántos años tengo?",
+        "¿Cuál es mi color favorito?",
+        "¿Cuál es mi anime favorito?",
+        "¿Cuál es mi personaje de anime favorito?",
+        "¿Cuál es mi género de anime favorito?",
+        "¿Cuál es mi juego favorito?",
+        "Del 1 al 10, ¿qué tan buen amigo soy?",
+        "¿Qué tipo de mujeres me gustan?"
+    ];
+    
+    let htmlMessage = `
+        <h1>📋 Resultados del Test del Amigo Falso</h1>
+        <div style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+            <h2 style="font-size: 3em; margin: 0; color: ${score.percentage >= 70 ? '#28a745' : '#dc3545'}">${score.percentage}%</h2>
+            <p style="font-size: 1.2em;">Acertaste ${score.correct} de ${score.total} preguntas</p>
+            <p style="font-weight: bold; color: ${score.percentage >= 70 ? '#28a745' : '#dc3545'}">
+                ${score.percentage >= 70 ? '🎉 ¡Eres un gran amigo!' : '😅 ¡Necesitas conocerme mejor!'}
+            </p>
+        </div>
+        <hr>
+        <h3>📝 Respuestas detalladas:</h3>
+        <br>
+    `;
+    
+    preguntas.forEach((q, index) => {
+        const answer = answers[index + 1] || 'No respondida';
+        const isCorrect = checkAnswer(index + 1, answer);
+        htmlMessage += `
+            <p>
+                <strong>${q}</strong><br>
+                ${answer}
+                ${isCorrect ? ' ✅' : ' ❌'}
+            </p>
+            <hr>
+        `;
+    });
+    
+    if (answers[11]) {
+        htmlMessage += `
+            <p><strong>📎 Imagen de depósito:</strong><br>
+            <img src="${answers[11]}" style="max-width: 500px; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px;"></p>
+        `;
+    } else {
+        htmlMessage += `<p><strong>📎 Imagen de depósito:</strong> No se subió imagen</p>`;
+    }
+    
+    // Enviar con EmailJS
+    const templateParams = {
+        to_email: 'silvestrefloresalberthmarcelo@gmail.com',
+        from_name: 'Test del Amigo Falso',
+        subject: '🎯 Test del Amigo Falso - Nuevas Respuestas',
+        message_html: htmlMessage,
+        score_percentage: score.percentage,
+        score_correct: score.correct,
+        score_total: score.total
     };
     
-    fetch('/send-email', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSend)
-    })
-    .then(response => response.json())
-    .then(data => {
+    console.log('📤 Enviando correo con EmailJS...');
+    console.log('Service ID:', 'service_dg51pjm');
+    console.log('Template ID:', 'template_pyxj2aq');
+    
+    emailjs.send(
+        'service_dg51pjm',   // ← TU SERVICE ID
+        'template_pyxj2aq',  // ← TU TEMPLATE ID
+        templateParams
+    )
+    .then(function(response) {
+        console.log('✅ Correo enviado:', response);
         const messageDiv = document.getElementById('message');
-        if (data.success) {
-            messageDiv.className = 'message success';
-            messageDiv.innerHTML = `
-                <h2>📊 ¡Resultados!</h2>
-                <p style="font-size: 3em; margin: 20px 0;">${score.percentage}%</p>
-                <p>Acertaste ${score.correct} de ${score.total} preguntas</p>
-                <p style="margin-top: 10px;">✅ Respuestas enviadas correctamente a tu correo</p>
-                ${score.percentage >= 70 ? '<p style="color: #28a745; font-weight: bold;">🎉 ¡Eres un gran amigo!</p>' : '<p style="color: #dc3545; font-weight: bold;">😅 ¡Necesitas conocerme mejor!</p>'}
-            `;
-            messageDiv.style.display = 'block';
-            submitBtn.textContent = '✅ Enviado';
-            document.querySelector('.form-actions').style.display = 'none';
-        } else {
-            messageDiv.className = 'message error';
-            messageDiv.textContent = '❌ Error al enviar: ' + data.message;
-            messageDiv.style.display = 'block';
-            submitBtn.textContent = 'Enviar Respuestas';
-            submitBtn.disabled = false;
-        }
-    })
-    .catch(error => {
+        messageDiv.className = 'message success';
+        messageDiv.innerHTML = `
+            <h2>📊 ¡Resultados!</h2>
+            <p style="font-size: 3em; margin: 20px 0;">${score.percentage}%</p>
+            <p>Acertaste ${score.correct} de ${score.total} preguntas</p>
+            <p style="margin-top: 10px;">✅ Respuestas enviadas correctamente a tu correo</p>
+            ${score.percentage >= 70 ? '<p style="color: #28a745; font-weight: bold;">🎉 ¡Eres un gran amigo!</p>' : '<p style="color: #dc3545; font-weight: bold;">😅 ¡Necesitas conocerme mejor!</p>'}
+        `;
+        messageDiv.style.display = 'block';
+        submitBtn.textContent = '✅ Enviado';
+        document.querySelector('.form-actions').style.display = 'none';
+    }, function(error) {
+        console.error('❌ Error detallado:', error);
         const messageDiv = document.getElementById('message');
         messageDiv.className = 'message error';
-        messageDiv.textContent = '❌ Error de conexión: ' + error.message;
+        messageDiv.innerHTML = `
+            <p>❌ Error al enviar el correo</p>
+            <p style="font-size: 0.9em; color: #666;">${error.text || error.message || 'Error desconocido'}</p>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Verifica que el Service ID y Public Key sean correctos</p>
+        `;
         messageDiv.style.display = 'block';
         submitBtn.textContent = 'Enviar Respuestas';
         submitBtn.disabled = false;
-        console.error('Error:', error);
     });
 }
 
@@ -237,7 +286,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentId = questions[currentQuestion].id;
         const input = document.getElementById(`q${currentId}`);
         
-        // Solo validar si no es la pregunta 11 (imagen, que es opcional)
         if (currentId !== 11 && (!input || !input.value)) {
             alert('Por favor responde esta pregunta antes de continuar.');
             return;
@@ -252,8 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('quizForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
-        // Verificar que todas las preguntas estén respondidas (excepto la 11 que es opcional)
-        const totalQuestions = 10; // Solo las primeras 10 son obligatorias
+        const totalQuestions = 10;
         let answered = 0;
         for (let i = 1; i <= totalQuestions; i++) {
             if (answers[i]) answered++;
@@ -264,7 +311,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Enviar datos al servidor
         sendData();
     });
 });
+
+// Cargar EmailJS
+const script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+script.onload = function() {
+    emailjs.init('ApP-3ysBP9MxV7e5V'); // ← TU PUBLIC KEY
+    console.log('✅ EmailJS inicializado');
+};
+document.head.appendChild(script);
