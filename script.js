@@ -29,10 +29,55 @@ const correctAnswers = {
 let currentQuestion = 0;
 const answers = {};
 let userAnswers = {};
+let imageData = null; // Guardar la imagen comprimida
 
 // Verificar login
 if (!localStorage.getItem('loggedIn')) {
     window.location.href = 'login.html';
+}
+
+// Función para comprimir imagen
+function compressImage(file, maxSizeKB = 40) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function(e) {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // Reducir tamaño si es muy grande
+                const maxDimension = 800;
+                if (width > maxDimension || height > maxDimension) {
+                    const ratio = Math.min(maxDimension / width, maxDimension / height);
+                    width *= ratio;
+                    height *= ratio;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Comprimir con calidad baja para reducir tamaño
+                let quality = 0.7;
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                
+                // Si sigue siendo muy grande, reducir más la calidad
+                while (dataUrl.length > maxSizeKB * 1024 && quality > 0.1) {
+                    quality -= 0.1;
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+                
+                resolve(dataUrl);
+            };
+            img.onerror = reject;
+        };
+        reader.onerror = reject;
+    });
 }
 
 // Función para renderizar preguntas
@@ -52,7 +97,7 @@ function renderQuestions() {
                     <label for="q${q.id}">${q.question}</label>
                     <input type="file" id="q${q.id}" accept="image/*" onchange="handleFileUpload(event, ${q.id})">
                     <div class="file-name" id="fileName-${q.id}"></div>
-                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">📌 Esta pregunta es opcional</p>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">📌 Esta pregunta es opcional (máximo 40KB)</p>
                 </div>
             `;
         } else {
@@ -81,19 +126,34 @@ function saveAnswer(id, value) {
     userAnswers[id] = value;
 }
 
-// Manejar archivos
-function handleFileUpload(event, id) {
+// Manejar archivos con compresión
+async function handleFileUpload(event, id) {
     const file = event.target.files[0];
     if (file) {
         const fileName = document.getElementById(`fileName-${id}`);
-        fileName.textContent = `📎 ${file.name}`;
         
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            answers[id] = e.target.result;
-            userAnswers[id] = 'Imagen subida';
-        };
-        reader.readAsDataURL(file);
+        // Verificar tamaño del archivo
+        if (file.size > 2 * 1024 * 1024) { // 2MB
+            alert('La imagen es demasiado grande. Por favor, sube una imagen más pequeña (máximo 2MB).');
+            event.target.value = '';
+            return;
+        }
+        
+        fileName.textContent = `📎 Comprimiendo imagen...`;
+        
+        try {
+            // Comprimir imagen
+            const compressedData = await compressImage(file, 40);
+            imageData = compressedData;
+            answers[id] = compressedData;
+            userAnswers[id] = 'Imagen subida (comprimida)';
+            fileName.textContent = `📎 ${file.name} (comprimida) ✅`;
+            console.log('✅ Imagen comprimida exitosamente');
+        } catch (error) {
+            console.error('Error al comprimir imagen:', error);
+            fileName.textContent = `❌ Error al comprimir imagen`;
+            alert('Error al procesar la imagen. Intenta con otra imagen más pequeña.');
+        }
     }
 }
 
@@ -171,7 +231,7 @@ function sendData() {
     
     const score = calculateScore();
     
-    // Construir el mensaje en HTML
+    // Construir el mensaje en HTML (sin la imagen para reducir tamaño)
     const preguntas = [
         "¿Cómo es mi nombre y apellido completo?",
         "¿Cuándo cumplo años?",
@@ -212,16 +272,14 @@ function sendData() {
         `;
     });
     
+    // Información de la imagen (sin incluir la imagen en el correo para evitar límite)
     if (answers[11]) {
-        htmlMessage += `
-            <p><strong>📎 Imagen de depósito:</strong><br>
-            <img src="${answers[11]}" style="max-width: 500px; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px;"></p>
-        `;
+        htmlMessage += `<p><strong>📎 Imagen de depósito:</strong> Imagen subida correctamente ✅</p>`;
     } else {
         htmlMessage += `<p><strong>📎 Imagen de depósito:</strong> No se subió imagen</p>`;
     }
     
-    // Enviar con EmailJS
+    // Enviar con EmailJS (sin la imagen para evitar límite de tamaño)
     const templateParams = {
         to_email: 'silvestrefloresalberthmarcelo@gmail.com',
         from_name: 'Test del Amigo Falso',
@@ -233,12 +291,11 @@ function sendData() {
     };
     
     console.log('📤 Enviando correo con EmailJS...');
-    console.log('Service ID:', 'service_dg51pjm');
-    console.log('Template ID:', 'template_pyxj2aq');
+    console.log('Tamaño del mensaje:', JSON.stringify(templateParams).length, 'bytes');
     
     emailjs.send(
-        'service_dg51pjm',   // ← TU SERVICE ID
-        'template_pyxj2aq',  // ← TU TEMPLATE ID
+        'service_dg51pjm',
+        'template_pyxj2aq',
         templateParams
     )
     .then(function(response) {
@@ -262,7 +319,7 @@ function sendData() {
         messageDiv.innerHTML = `
             <p>❌ Error al enviar el correo</p>
             <p style="font-size: 0.9em; color: #666;">${error.text || error.message || 'Error desconocido'}</p>
-            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Verifica que el Service ID y Public Key sean correctos</p>
+            <p style="font-size: 0.9em; color: #666; margin-top: 10px;">Intenta subir una imagen más pequeña (menos de 40KB)</p>
         `;
         messageDiv.style.display = 'block';
         submitBtn.textContent = 'Enviar Respuestas';
@@ -319,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
 const script = document.createElement('script');
 script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
 script.onload = function() {
-    emailjs.init('ApP-3ysBP9MxV7e5V'); // ← TU PUBLIC KEY
+    emailjs.init('ApP-3ysBP9MxV7e5V');
     console.log('✅ EmailJS inicializado');
 };
 document.head.appendChild(script);
