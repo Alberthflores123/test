@@ -1,7 +1,7 @@
 const questions = [
     { id: 1, question: "¿Cómo es mi nombre y apellido completo?", type: "text" },
     { id: 2, question: "¿Cuándo cumplo años?", type: "text" },
-    { id: 3, question: "¿Cuántos años tengo?", type: "number" },
+    { id: 3, question: "¿Cuántos años tengo?", type: "text" }, // ✅ CAMBIADO A TEXT
     { id: 4, question: "¿Cuál es mi color favorito?", type: "text" },
     { id: 5, question: "¿Cuál es mi anime favorito?", type: "text" },
     { id: 6, question: "¿Cuál es mi personaje de anime favorito?", type: "text" },
@@ -60,7 +60,8 @@ function renderQuestions() {
                 <div class="form-group">
                     <label for="q${q.id}">${q.question}</label>
                     <input type="${q.type}" id="q${q.id}" 
-                           ${q.type === 'number' ? 'min="1" max="10"' : ''}>
+                           ${q.type === 'number' ? 'min="1" max="10"' : ''}
+                           onchange="saveAnswer(${q.id}, this.value)">
                 </div>
             `;
         }
