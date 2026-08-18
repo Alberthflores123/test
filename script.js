@@ -20,9 +20,9 @@ const correctAnswers = {
     4: ["negro", "black"],
     5: ["gotoubun no hanayome", "las quintillizas", "the quintessential quintuplets", "quintillizas"],
     6: ["miku nakano", "miku"],
-    7: ["yuri", "gl"], // ¡NUEVO! Género de anime favorito
+    7: ["yuri", "gl"],
     8: ["genshin impact", "genshin"],
-    9: function(value) { return parseInt(value) >= 5; }, // Aprobado si es >= 5
+    9: function(value) { return parseInt(value) >= 5; },
     10: ["milf", "culonas", "tetonas", "pequeñas", "tiernas", "culona", "tetona", "pequeña", "tierna"]
 };
 
@@ -60,8 +60,7 @@ function renderQuestions() {
                 <div class="form-group">
                     <label for="q${q.id}">${q.question}</label>
                     <input type="${q.type}" id="q${q.id}" 
-                           ${q.type === 'number' ? 'min="1" max="10"' : ''}
-                           onchange="saveAnswer(${q.id}, this.value)">
+                           ${q.type === 'number' ? 'min="1" max="10"' : ''}>
                 </div>
             `;
         }
@@ -213,7 +212,7 @@ function sendData() {
     .catch(error => {
         const messageDiv = document.getElementById('message');
         messageDiv.className = 'message error';
-        messageDiv.textContent = '❌ Error de conexión. Asegúrate de que el servidor esté corriendo.';
+        messageDiv.textContent = '❌ Error de conexión: ' + error.message;
         messageDiv.style.display = 'block';
         submitBtn.textContent = 'Enviar Respuestas';
         submitBtn.disabled = false;
