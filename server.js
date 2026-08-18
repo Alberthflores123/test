@@ -12,12 +12,26 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
-// Configuración del transporter
+// ✅ CONFIGURACIÓN CORREGIDA PARA RENDER
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587, // ✅ CAMBIADO DE 465 A 587
+    secure: false, // ✅ CAMBIADO DE true A false (STARTTLS)
     auth: {
         user: process.env.EMAIL_USER || 'silvestrefloresalberthmarcelo@gmail.com',
         pass: process.env.EMAIL_PASS || 'jowsomhsroxxfqom'
+    },
+    tls: {
+        rejectUnauthorized: false // ✅ PARA EVITAR PROBLEMAS DE CERTIFICADO
+    }
+});
+
+// Verificar conexión con Gmail al iniciar
+transporter.verify(function(error, success) {
+    if (error) {
+        console.log('❌ Error de conexión con Gmail:', error);
+    } else {
+        console.log('✅ Conexión con Gmail establecida correctamente');
     }
 });
 
@@ -36,8 +50,12 @@ app.get('/index.html', (req, res) => {
 
 // Ruta para enviar correos
 app.post('/send-email', async (req, res) => {
+    console.log('📩 Recibida solicitud de envío de correo');
+    
     try {
         const data = req.body;
+        console.log('📊 Datos recibidos:', Object.keys(data));
+        
         const answers = data;
         const score = data.score || { correct: 0, total: 10, percentage: 0 };
         
@@ -93,6 +111,8 @@ app.post('/send-email', async (req, res) => {
             emailBody += `<p><strong>📎 Imagen de depósito:</strong> No se subió imagen</p>`;
         }
         
+        console.log('📧 Preparando envío de correo...');
+        
         const mailOptions = {
             from: process.env.EMAIL_USER || 'silvestrefloresalberthmarcelo@gmail.com',
             to: 'silvestrefloresalberthmarcelo@gmail.com',
@@ -100,12 +120,17 @@ app.post('/send-email', async (req, res) => {
             html: emailBody
         };
         
-        await transporter.sendMail(mailOptions);
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Correo enviado:', info.messageId);
         
         res.json({ success: true, message: 'Correo enviado correctamente' });
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ success: false, message: error.message });
+        console.error('❌ Error detallado:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: error.message,
+            details: error.stack 
+        });
     }
 });
 
@@ -118,7 +143,7 @@ function checkAnswer(id, answer) {
         4: ["negro", "black"],
         5: ["gotoubun no hanayome", "las quintillizas", "the quintessential quintuplets", "quintillizas"],
         6: ["miku nakano", "miku"],
-        7: ["yuri", "gl"], // ¡NUEVO!
+        7: ["yuri", "gl"],
         8: ["genshin impact", "genshin"],
         9: function(value) { return parseInt(value) >= 5; },
         10: ["milf", "culonas", "tetonas", "pequeñas", "tiernas", "culona", "tetona", "pequeña", "tierna"]
@@ -139,4 +164,5 @@ function checkAnswer(id, answer) {
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`📧 Correo configurado con: ${process.env.EMAIL_USER || 'silvestrefloresalberthmarcelo@gmail.com'}`);
 });
